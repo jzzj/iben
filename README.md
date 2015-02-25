@@ -1,2 +1,2 @@
 # iben
-iBen JavaScript Library. It's not finished yet.
+iBen JavaScript Library.
