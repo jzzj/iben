@@ -1,0 +1,66 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN">
+<html>
+<head>
+<title>iben framework</title>
+<meta http-equiv="Content-type" content="text/html; charset=utf-8">
+</head>
+<body>
+<div id="div4js">
+	<ul id="ul4js">
+		<li>1</li>
+		<li>2</li>
+		<li>3</li>
+		<li>4</li>
+		<li>5</li>
+		<li>6</li>
+	</ul>
+</div>
+<script src="jquery-1.11.2.js"></script>
+<script src="iben.js"></script>
+<script type="text/javascript">
+//iBen.each的参数顺序如下：
+iBen.each({a:1},function(key, value){
+	iBen.log(key, value);
+});
+$A(["234,","cxv"]).each(function(value, idx){
+	iBen.log(value,idx)
+});
+
+iBen.use('*', function(ben){
+	//constant-常量定义
+	ben.constant.add("zhangsan",11);
+	ben.constant.add("zhangsan",112);
+	ben.log(ben.constant.get('zhangsan'));
+	
+	//observer-观察者模式
+	var observer=ben.observer();
+	//namespace指定命名空间，有则返回
+	//ben.log(iBen.namespace("modules.constant"));
+	ben.log(ben.json.toJson('{\'a\' : "1 2"}'));
+	/*
+		所有json字符串格式如下，无/单/双引号，function忽略，包含递归
+		讲字符串转换成json原则：取出key，取出value —— //key为值传递，value可使用引用传递
+	 */
+	//一对{}是一个对象，里面的数据都属于一个对象
+	var json='[[[[[[[3,{a:3}]],345,34564,4567,568786797]]]],{c:{}}]';
+	iBen.log($S("[45435.4,5,'sdf','sdfcxv..gjfdkgj\\'sdfsdf\\\"',65456.5]").eval());
+	iBen.log(ben.json.toJson(json));
+	var str='[ {"a":34,b:34,d:{b:"svxcv,[]","d:d,{}sfd:":"s{}\\"/cvsdf"}},{"dd:":"cxc"},34,{"xcv":"34",{a:3,b:45,e:3,b:4125}},{"xcvf":"34234",{a:3,b:45}},"234vcx\\\"zxcv"]';
+	//var str='[ 34,{"xcv":"34",f:{a:3,b:45,e:3,b:4125}},{"xcvf":"34234",c:{a:3,b:45}},"234vcx\\\"zxcv"]';
+	//性能较差，待优化
+	//time执行时间计算
+	ben.time(function(){
+		iBen.log($S(str).eval())
+	});
+	ben.time(function(){
+		iBen.log(ben.json.toJson('[1,2,3,4,"xvccc",[4,5,["wer"]]]'));
+	});
+	//iben.log(ben.json.toJson('{f:[3,4,5,"sdfxcv","[]]]]"],c:[ 34,{"xcv":"34",f:{a:3,b:45,e:3,b:4125}},{"xcvf":"34234",c:{a:3,b:45}},"234vcx\\\"zxcv"]}'))
+	//iBen.log(ben.json.toJson('[1,2,3,4,"xvccc",[4,5,5]]'));
+	
+	//ben.log('{"a\'b":\'cc:df\'}'.split(":"));
+});
+
+</script>
+</body>
+</html>
