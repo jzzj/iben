@@ -1,6 +1,6 @@
 /*!
  * iBen JavaScript Library v1.1.0
- * Copyright 2012 zangzhan
+ * Copyright 2015 zangzhan
  * Date: 2015-2-22 12:18:16
  * license: zangzhan/license
  * contact: 905951024@qq.com
@@ -316,7 +316,10 @@ iBen.modules = {
 	},
 	observer : function(box){
 		box.observer=function(o){
-			return makePublisher(o || {});
+			o = o || {};
+			Object.extend(o, Publisher, true, 'function');
+			o.subscribers={any : []};
+			return o;
 		};
 		//keys for compatibility
 		var Publisher={
@@ -348,15 +351,6 @@ iBen.modules = {
 				});
 			}
 		};
-		
-		function makePublisher(o){
-			for(var key in Publisher){
-				if(Publisher.hasOwnProperty(key)&&iBen.isFunction(Publisher[key]))
-					o[key]=Publisher[key];
-			}
-			o.subscribers={any:[]};
-			return o;
-		}
 	},
 	json: function(box){
 		box.json = (function(){
@@ -484,6 +478,7 @@ iBen.each(EXTEND_TYPES, function(item, idx){
 	});
 });
 
+//inherit the prototype of native Object
 iBen.each(extend_protos, function(proto){
 	iBen.each(proto, function(type, array){
 		var _prototype = win[type].prototype;

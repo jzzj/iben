@@ -1,3 +1,5 @@
+每次的版本更新记录都会在此目录txt中呈现：
+
 版本：iben-version-1.1.0
 时间：2015年2月16日09:52:36
 修改：修改Publisher为iBen的observer模块，添加json模块，iBen中添加基本类型的伪对象，修改use。
