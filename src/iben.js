@@ -10,7 +10,7 @@ var _arraryProto = Array.prototype,
 	_slice = _arraryProto.slice,
 	
 	iBen = function(){
-		return iBen.use.apply(this, ['*'].concat(_slice.call(arguments)));
+		return iBen.use.apply(this, arguments);
 	},
 	
 	_fnProto = Function.prototype,
@@ -18,7 +18,6 @@ var _arraryProto = Array.prototype,
 	_call  = _fnProto.call,
 	_objectProto = Object.prototype,
 	_toString = _objectProto.toString,
-	_hasOwn = _objectProto.hasOwnProperty,
 	_GLOBAL_NAME = "iBen",
 	EXTEND_TYPES = ["String","Number","Array","Date"],
 	CLASS_TYPE = ["Boolean","Function","RegExp","Object","Error"].concat(EXTEND_TYPES),
@@ -26,12 +25,16 @@ var _arraryProto = Array.prototype,
 
 //turn it off when you publish your project. it's false in the version of the min-iBen
 iBen.config = {
-	debug: true
+	debug: true,
+	cacheUse : true,
+	throwFail: true
 };
 
 //Object moudle
 (function(){
-	var class2type = [];
+	var class2type = {},
+		_hasOwn  = class2type.hasOwnProperty,
+		_toString= class2type.toString;
 	function each(array, fn){
 		for(var i=0, len=array.length; i<len; i++)
 			fn(i, array[i]);
@@ -67,12 +70,6 @@ iBen.config = {
 	function clone(object){
 		return extend({}, object);
 	}
-	function keys(object){
-		var results=[];
-		for(var key in object)
-			results.push(key);
-		return results;
-	}
 	
 	extend(Object,{
 		extend: extend,
@@ -96,28 +93,44 @@ Object.extend(iBen, {
 		  MobileSafari:   /Apple.*Mobile/.test(ua)
 		}
 	})(),
-	cache: [],
+	cache: {},
+	instanceOf: function(o, type) {
+		return !!(o && o.hasOwnProperty && (o instanceof type));
+	},
+	Modules: {},
+	add: function(module, source){
+		var destination = iBen.Modules;
+		iBen.isString(module) ? (destination = iBen.namespace(['Modules', module].join("."))) : (source = module);
+		Object.extend(destination, source);
+		return iBen;
+	},
 	use: function(){
 		var args = _slice.call(arguments, 0),
 			callback = iBen.isFunction(args[args.length - 1]) ? args.pop() : null,
-			modules = (args[0] && iBen.isString(args[0]))? args: args[0],
-			i;
-		if(!(this instanceof iBen.use)){
-			return new iBen.use(modules, callback);
+			modules = iBen.isArray(args[0]) ? args[0]: args,
+			i, Ben = this, Modules;
+		if(!iBen.instanceOf(Ben, iBen)){
+			return new iBen(modules, callback);
 		}
-		iBen.cache.push(this);
-		if(!modules || modules[0]==="*"){
-			modules = [];
-			for(i in iBen.modules){
-				if(iBen.modules.hasOwnProperty(i)&&iBen.isFunction(iBen.modules[i]))
-					modules.push(i);
+		if(iBen.config.cacheUse && iBen.instanceOf(iBen.cache[modules], iBen)){
+			Ben = iBen.cache[modules];
+		}else{
+			Modules = iBen.Modules;
+			if(!modules.length || modules[0]==="*"){
+				modules = [];
+				for(i in Modules){
+					if(Modules.hasOwnProperty(i)&&iBen.isFunction(Modules[i]))
+						modules.push(i);
+				}
+			}
+			iBen.cache[modules] = Ben;
+			for(i=0, len=modules.length; i<len; i++){
+				Modules[modules[i]](Ben);
 			}
 		}
-		for(i=0, len=modules.length; i<len; i++){
-			iBen.modules[modules[i]](this);
-		}
-		iBen.isFunction(callback)&&callback.apply(this, [this].concat(modules));
-		return (len-1) ? this : this[modules[0]] || this;
+		
+		iBen.isFunction(callback)&&callback.apply(Ben, [Ben].concat(modules));
+		return (len-1) ? Ben : Ben[modules[0]] || Ben;
 	},
 	//borrow from jQuery
 	each: function( obj, callback, args ) {
@@ -205,20 +218,13 @@ Object.extend(Array, {
 	});
 })();
 
-var PERIOD = ".",
-	reg_sChar = /\s*/g,
-	reg_sValidate=/^(?:{|\[).*(?:\]|})$/g,
-	$break = {},
+var period = ".",
 	//store of json module vars
 	json = {},
-	mColon = ":",
-	mComma = ",",
-	mQuot = "\"",
 	//RegExps for format json string
 	reg_hash=/(?:"|')*\S+(?:"|')*:(?:"|')*\S+(?:"|')*/g,
 	reg_array=/^ *\[.*\] *$/,
 	reg_empty_array=/^\[\s*]$/g,
-	reg_multipart_array=/^ *\[.*\],(\[.*\],)*\[.*\] *$/,
 	//multi-line text is supportive
 	reg_object=/^ *{.*} *$/,
 	reg_empty_object=/^{\s*(} *)+$/g,
@@ -231,7 +237,6 @@ var PERIOD = ".",
 	reg_type=/^ *(?:"|')+\s*/,
 	reg_value=/^ *("|')*\s*(.*?)\1\s*(?:(}){2,}|(?=}|,))(?=}|,)(?:.*)$/,
 	reg_value_hash=/^ *("|')*(.*?)\1 *$/g,
-	reg_value_string=/^("|')*\s*(.*?)\1\s*(?=}|,)/,
 	reg_strip_tail=/(^.*?,)|(}+$)/,
 	reg_function=/^ *function *\( *\)/;
 
@@ -251,9 +256,9 @@ Object.extend(iBen, {
         var a = arguments, o = this, i = 0, j, d, arg, l;
         for (; i < a.length; i++) {
             arg = a[i];
-            if (arg.indexOf(PERIOD)) {
-                d = arg.split(PERIOD);
-                for (j = (d[0] == 'iBen') ? 1 : 0, l = d.length; j < l; j++) {
+            if (arg.indexOf(period)) {
+                d = arg.split(period);
+                for (j = (d[0] == _GLOBAL_NAME) ? 1 : 0, l = d.length; j < l; j++) {
                     o[d[j]] = o[d[j]] || {};
                     o = o[d[j]];
                 }
@@ -283,7 +288,15 @@ Object.extend(iBen, {
 	}
 });
 
-iBen.modules = {
+//base modules
+Object.extend(iBen.prototype, {
+	instanceOf: iBen.instanceOf,
+	log: iBen.log,
+	write: iBen.write,
+	time: iBen.time
+});
+
+iBen.add({
 	base : function(box){
 		Object.extend(box, {
 			inherit: function(subclass, superclass){
@@ -299,9 +312,6 @@ iBen.modules = {
 				F.prototype = o;
 				return new F;
 			},
-			log: iBen.log,
-			write: iBen.write,
-			time: iBen.time
 		});
 	},
 	constant : function(box){
@@ -458,8 +468,7 @@ iBen.modules = {
 		})();
 		
 	}
-};
-
+});
 var Constant = iBen.use("constant");
 Constant.add("CONTINUE", "__IBEN_CONTINUE_FLAG__")
 	.add("RESULT_SUCCESS", "__IBEN_SUCCESS_FLAG__")
@@ -529,6 +538,7 @@ Object.extend($S, {
 	}
 });
 
+//iBen.String
 Object.extend($S.prototype, (function(){
 	function find(cha, callback){
 		var reg_char=new RegExp(cha, 'g'),
@@ -695,7 +705,7 @@ Object.extend($S.prototype, (function(){
 				if(result.value === Constant.get("CONTINUE"))
 					break;
 				results.push(iBen.isString(result.value) ? $S(result.value).recoverLine() : result.value);
-				break;
+				return true;;
 			case Constant.get("RESULT_FAIL"):
 				iBen.isFunction(fn)&&fn();
 				return false;
@@ -740,6 +750,7 @@ Object.extend($S.prototype, (function(){
 	}
 })());
 
+//iBen.Array
 Object.extend($A.prototype, (function(){
 	function _slice(str){
 		if(reg_array.test(str)){
@@ -783,6 +794,7 @@ Object.extend($A.prototype, (function(){
 	}
 })());
 
+//iBen.Number
 Object.extend($N.prototype, (function(){
 	function random(){
 		return (Math.random()+"").slice(2);
@@ -790,6 +802,15 @@ Object.extend($N.prototype, (function(){
 	
 	return {
 		random: random
+	}
+})());
+
+//iBen.Date
+Object.extend($D.prototype, (function(){
+	//add functions here
+	
+	return {
+		
 	}
 })());
 
@@ -808,6 +829,7 @@ Object.extend($N.prototype, (function(){
 		}
 	});
 })();
+
 Object.extend(iBen.namespace('util'), (function(){
 	function convert(o){
 		if($S(o).blank())return o;
@@ -871,6 +893,11 @@ Object.extend(iBen, (function(){
 })());
 
 win.JSON = win.JSON || iBen.JSON;
+
+//for CommonJS
+if (typeof exports == 'object') {
+	exports.iBen = iBen;
+}
 
 win.iBen = win.$$ = win.iben = win.$B = iBen;
 })(typeof window!== 'undefined' ? window : this);
