@@ -36,16 +36,18 @@ iBen.use('*', function(ben){
 	var observer=ben.observer();
 	//namespace指定命名空间，有则返回
 	//ben.log(iBen.namespace("modules.constant"));
-	ben.log(ben.json.toJson('{\'a\' : "1 2"}'));
+	ben.log($S('{\'a\' : "1\r\n 2"}').eval());
+	//strip functions
+	iBen.log($S('{\'a\' : "{sdf,,dsf}",a:[function(){if(1==1){\r\n alert(123);\r\n\t}}],c:["234,345[]{}"],f:{e:{},e:{e:[1]}}}').eval());
 	/*
 		所有json字符串格式如下，无/单/双引号，function忽略，包含递归
-		讲字符串转换成json原则：取出key，取出value —— //key为值传递，value可使用引用传递
+		讲字符串转换成json原则：取出key，取出value
 	 */
 	//一对{}是一个对象，里面的数据都属于一个对象
 	var json='[[[[[[[3,{a:3}]],345,34564,4567,568786797]]]],{c:{}}]';
 	iBen.log($S("[45435.4,5,'sdf','sdfcxv..gjfdkgj\\'sdfsdf\\\"',65456.5]").eval());
 	iBen.log(ben.json.toJson(json));
-	var str='[ {"a":34,b:34,d:{b:"svxcv,[]","d:d,{}sfd:":"s{}\\"/cvsdf"}},{"dd:":"cxc"},34,{"xcv":"34",{a:3,b:45,e:3,b:4125}},{"xcvf":"34234",{a:3,b:45}},"234vcx\\\"zxcv"]';
+	var str='[ {"a":34,b:34,d:{b:"svxcv,[]","d:d,{}sfd:":"s{}\\"/cv\nsdf"}},[\n],{"dd:":"cxc"},34,{"xcv":"34",b:{a:3,b:45,e:3,b:4125}},{"xcvf":"34234",{a:3,b:45}},"234vcx\\\"zxcv"]';
 	//var str='[ 34,{"xcv":"34",f:{a:3,b:45,e:3,b:4125}},{"xcvf":"34234",c:{a:3,b:45}},"234vcx\\\"zxcv"]';
 	//性能较差，待优化
 	//time执行时间计算

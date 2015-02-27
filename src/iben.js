@@ -5,31 +5,33 @@
  * license: zangzhan/license
  * contact: 905951024@qq.com
  */
+(function(win){
 var _arraryProto = Array.prototype,
 	_slice = _arraryProto.slice,
 	
 	iBen = function(){
 		return iBen.use.apply(this, ['*'].concat(_slice.call(arguments)));
-	};
+	},
+	
+	_fnProto = Function.prototype,
+	_apply = _fnProto.apply,
+	_call  = _fnProto.call,
+	_objectProto = Object.prototype,
+	_toString = _objectProto.toString,
+	_hasOwn = _objectProto.hasOwnProperty,
+	_GLOBAL_NAME = "iBen",
+	EXTEND_TYPES = ["String","Number","Array","Date"],
+	CLASS_TYPE = ["Boolean","Function","RegExp","Object","Error"].concat(EXTEND_TYPES),
+	TYPES = CLASS_TYPE.concat(["Undefined","Null"]);
 
 //turn it off when you publish your project. it's false in the version of the min-iBen
 iBen.config = {
 	debug: true
 };
 
-
-var _fnProto = Function.prototype,
-	_apply = _fnProto.apply,
-	_call  = _fnProto.call,
-	_objectProto = Object.prototype,
-	EXTEND_TYPES = ["String","Number","Array","Date"],
-	CLASS_TYPE = ["Boolean","Function","RegExp","Object","Error"].concat(EXTEND_TYPES),
-	TYPES = CLASS_TYPE.concat(["Undefined","Null"]);
-
 //Object moudle
 (function(){
-	var _toString = Object.prototype.toString,
-		class2type = [];
+	var class2type = [];
 	function each(array, fn){
 		for(var i=0, len=array.length; i<len; i++)
 			fn(i, array[i]);
@@ -41,13 +43,13 @@ var _fnProto = Function.prototype,
 	function extend(destination, source, hasOwnProperty, type){
 		if(hasOwnProperty&&type){
 			for(var key in source)
-				if(source.hasOwnProperty(key)&&Object.type(source[key])===type)
+				if(_hasOwn.call(source, key)&&Object.type(source[key])===type)
 					destination[key] = source[key];
 			return destination;
 		}
 		if(hasOwnProperty){
 			for(var key in source)
-				if(source.hasOwnProperty(key))
+				if(_hasOwn.call(source, key))
 					destination[key] = source[key];
 			return destination;
 		}
@@ -85,7 +87,7 @@ Object.extend(iBen, {
 	Version: "1.1.0",
 	Browser: (function(){
 		var ua = navigator.userAgent;
-		var isOpera = Object.prototype.toString.call(window.opera) == '[object Opera]';
+		var isOpera = _toString.call(window.opera) == '[object Opera]';
 		return {
 		  IE:             !!window.attachEvent && !isOpera,
 		  Opera:          isOpera,
@@ -94,6 +96,7 @@ Object.extend(iBen, {
 		  MobileSafari:   /Apple.*Mobile/.test(ua)
 		}
 	})(),
+	cache: [],
 	use: function(){
 		var args = _slice.call(arguments, 0),
 			callback = iBen.isFunction(args[args.length - 1]) ? args.pop() : null,
@@ -102,6 +105,7 @@ Object.extend(iBen, {
 		if(!(this instanceof iBen.use)){
 			return new iBen.use(modules, callback);
 		}
+		iBen.cache.push(this);
 		if(!modules || modules[0]==="*"){
 			modules = [];
 			for(i in iBen.modules){
@@ -201,12 +205,12 @@ Object.extend(Array, {
 	});
 })();
 
-(function(){
 var PERIOD = ".",
 	reg_sChar = /\s*/g,
 	reg_sValidate=/^(?:{|\[).*(?:\]|})$/g,
-	win = window,
 	$break = {},
+	//store of json module vars
+	json = {},
 	mColon = ":",
 	mComma = ",",
 	mQuot = "\"",
@@ -215,21 +219,28 @@ var PERIOD = ".",
 	reg_array=/^ *\[.*\] *$/,
 	reg_empty_array=/^\[\s*]$/g,
 	reg_multipart_array=/^ *\[.*\],(\[.*\],)*\[.*\] *$/,
-	//multi-line text is not supported
+	//multi-line text is supportive
 	reg_object=/^ *{.*} *$/,
 	reg_empty_object=/^{\s*(} *)+$/g,
 	reg_strip_array=/^(?: *\[ *)*(.*?)(?: *\] *)+$/g,
 	//RE eval string
 	reg_array_quot=/^.*?("|').*?$/,
 	reg_strip_start=/^(?: *{ *)*/g,
-	reg_key=/^("|')*(.*?)\1\s*:(?:.*)$/,
-	reg_key_string=/^("|')*(.*?)\1\s*:/,
+	reg_key=/^ *("|')*(.*?)\1\s*:(?:.*)$/,
+	reg_key_string=/^ *("|')*(.*?)\1\s*:/,
 	reg_type=/^ *(?:"|')+\s*/,
 	reg_value=/^ *("|')*\s*(.*?)\1\s*(?:(}){2,}|(?=}|,))(?=}|,)(?:.*)$/,
 	reg_value_hash=/^ *("|')*(.*?)\1 *$/g,
 	reg_value_string=/^("|')*\s*(.*?)\1\s*(?=}|,)/,
 	reg_strip_tail=/(^.*?,)|(}+$)/,
 	reg_function=/^ *function *\( *\)/;
+
+Object.extend(json, {
+	error: function(str){
+		throw new SyntaxError('Badly formed JSON string: ' + str);
+	}
+});
+	
 Object.extend(iBen, {
 	configure: function(config){
 		Object.extend(iBen.config, config, true);
@@ -354,9 +365,15 @@ iBen.modules = {
 	},
 	json: function(box){
 		box.json = (function(){
-			var result, temp, convert, obj;
+			var result, temp, convert, obj, last, raw;
 			function evalJson(str, result){
-				while(str.length){
+				raw = str;
+				while(str.length&&!$S(str).blank()){
+					//prevent endless loop
+					if(last === str){
+						json.error(raw);
+					}
+					last = str;
 					str=str.replace(reg_strip_array, "$1");
 					obj = reg_object.test(str)? {} : iBen.isArray(result) ? result.pop() : {};
 					str=str.replace(reg_strip_start, "");
@@ -378,8 +395,8 @@ iBen.modules = {
 					//[.*]
 					}else if(/^ *\[/g.test(str)){
 						convert = true;
-						var cursor = $S(str).findArray();
-						value = str.slice(str.indexOf("["), cursor+1);
+						var cursor = $S(str).findArray()+1;
+						value = str.slice(str.indexOf("["), cursor);
 						str = str.slice(cursor);
 					//regular formed
 					}else if(reg_value.test(str)){
@@ -390,9 +407,12 @@ iBen.modules = {
 						str = "";
 					//uncaught error
 					}else{
-						throw new SyntaxError('Badly formed JSON string: ' + str);
+						json.error(str);
 					}
-					str=str.replace(reg_value_string,"").replace(reg_strip_tail,"");
+					if(convert&&reg_function.test(value)){
+						str = str.slice($S(str).findObject());
+					}
+					str=str.replace(value, "").replace(/("|')\1/,"").replace(reg_strip_tail,"");
 					if(convert){
 						temp = value;
 						value= iBen.util.convert(temp);
@@ -404,6 +424,7 @@ iBen.modules = {
 					}else if(iBen.isArray(value)){
 						value = $S(temp).eval();
 					}
+					value = iBen.isString(value) ? $S(value).recoverLine() : value;
 					if(iBen.isArray(result)){
 						obj[key] = value;
 						result.push(obj);
@@ -418,11 +439,12 @@ iBen.modules = {
 				if(reg_hash.test(str) || reg_object.test(str)){
 					return {};
 				}
-				throw new SyntaxError('Badly formed JSON string: ' + str);
+				json.error(str);
 			}
 			
 			return {
 				toJson: function(o){
+					o = $S(o).coverLine();
 					if(reg_array.test(o)){
 						return $S(o).eval();
 					}
@@ -443,7 +465,8 @@ Constant.add("CONTINUE", "__IBEN_CONTINUE_FLAG__")
 	.add("RESULT_SUCCESS", "__IBEN_SUCCESS_FLAG__")
 	.add("RESULT_FAIL", "__IBEN_FAIL_FLAG__")
 	.add("JSON", "__IBEN_JSON_FLAG__")
-	.add("ARRAY", "__IBEN_ARRAY_FLAG__");
+	.add("ARRAY", "__IBEN_ARRAY_FLAG__")
+	.add("IDENTITY", "__IBEN_IDENTITY_FLAG__");
 	
 var object_keys = ["toSource","valueOf"],
 	proto_string = {"String" : ["quote","substring","toLowerCase","toUpperCase","charAt","charCodeAt","codePointAt","contains","indexOf","lastIndexOf","startsWith","endsWith","trim","trimLeft","trimRight","toLocaleLowerCase","toLocaleUpperCase","localeCompare","repeat","normalize","match","search","replace","split","substr","concat","slice","bold","italics","fixed","strike","small","big","blink","sup","sub","anchor","link","fontcolor","fontsize"].concat(object_keys)},
@@ -494,19 +517,40 @@ iBen.each(extend_protos, function(proto){
 });
 var brace = ['{', '}'],
 	bracket = ['[', ']'];
+
+Object.extend($S, {
+	specialChar: {
+		'\n': '_n_',
+		'\r': '_r_',
+	},
+	reverseChar: {
+		'_n_': '\n',
+		'_r_': '\r',
+	}
+});
+
 Object.extend($S.prototype, (function(){
 	function find(cha, callback){
 		var reg_char=new RegExp(cha, 'g'),
 			count = 0,
 			that = this;
-		this._.replace(reg_char, function(a, b, s){
-			callback.call(that, a, b, ++count, s);
-		});
-		return this;
+		return String(this.replace(reg_char, function(a, b, s){
+			return callback.call(that, a, b, ++count, s);
+		}).raw());
 	}
 	//borrow from prototype
 	function strip() {
 		return this.replace(/^\s+/, '').replace(/\s+$/, '');
+	}
+	function coverLine(){
+		return this.find("(\r|\n)",function(a){
+			return ["-@@", $S.specialChar[a], "@@-"].join("");
+		});
+	}
+	function recoverLine(){
+		return this.find(["-@@", "(_n_|_r_)", "@@-"].join(""),function(a, b){
+			return $S.reverseChar[b];
+		});
 	}
 	function empty() {
 		return this._ == '';
@@ -523,8 +567,14 @@ Object.extend($S.prototype, (function(){
 		});
 	}
 	function findArray(){
+		return this.findPair(bracket);
+	}
+	function findObject(){
+		return this.findPair(brace);
+	}
+	function findPair(pair){
 		var r1=0, r2=0;
-		return this.findChar(bracket, function(count, c, idx, s){
+		return this.findChar(pair, function(count, c, idx, s){
 			if(c==='"' && s[idx-1]!='\\' && r2%2==0)
 				r1++;
 			else if(c==="'" && s[idx-1]!='\\' && r1%2==0)
@@ -600,7 +650,7 @@ Object.extend($S.prototype, (function(){
 	}
 	
 	function eval(){
-		this._ = this.strip()._;
+		this._ = this.strip().coverLine();
 		if(reg_empty_array.test(this._)){
 			return [];
 		}else if(reg_array.test(this._)){
@@ -621,19 +671,21 @@ Object.extend($S.prototype, (function(){
 			str.find(',', function(a, b, c, s){
 				if(b <= cursor){ idx = b; return;}
 				result = $S(s).gsub(reg_array_quot, idx+1, b);
-				cursor = _push_result(result, results) || cursor;
+				result = _push_result(result, results);
+				if(result === false)return false;
+				cursor = result || cursor;
 				idx=b;
 			});
 			if(cursor >= str.size())return results;
 			result=str.gsub(reg_array_quot, idx>=0 ? idx+1 : 0);
 			_push_result(result, results, function(){
-				throw new SyntaxError('Badly formed String: ' + str);
+				json.error(str);
 			});
 			return results;
 		}else if(reg_object.test(this._)){
 			return iBen.use('json').toJson(this._);
 		}
-		throw new SyntaxError('Badly formed String: ' + this._);
+		json.error(this);
 	}
 	
 	function _push_result(result, results, fn){
@@ -642,7 +694,7 @@ Object.extend($S.prototype, (function(){
 				//skip functions
 				if(result.value === Constant.get("CONTINUE"))
 					break;
-				results.push(result.value);
+				results.push(iBen.isString(result.value) ? $S(result.value).recoverLine() : result.value);
 				break;
 			case Constant.get("RESULT_FAIL"):
 				iBen.isFunction(fn)&&fn();
@@ -670,6 +722,8 @@ Object.extend($S.prototype, (function(){
 	return {
 		find: find,
 		strip: strip,
+		coverLine: coverLine,
+		recoverLine: recoverLine,
 		empty: empty,
 		blank: blank,
 		peel: peel,
@@ -678,7 +732,9 @@ Object.extend($S.prototype, (function(){
 		br: br,
 		toArray: toArray,
 		findChar: findChar,
-		findArray: findArray,
+		findPair: findPair,
+		findArray : findArray,
+		findObject: findObject,
 		eval: eval,
 		couple: couple
 	}
@@ -703,16 +759,37 @@ Object.extend($A.prototype, (function(){
 	}
 	function each(iterator, stopOnFalse){
 		for(var i=0, length = this._.length; i < length;) {
-			if(iterator(this._[i++], i) === false && stopOnFalse){
+			if(iterator(this._[i], i++) === false && stopOnFalse){
 				break;
 			}
 		}
 		return this;
 	}
+	//borrow from prototype
+	function findAll(iterator, context) {
+		var results = [];
+		this.each(function(value, index) {
+		  if (iterator.call(context, value, index))
+			results.push(value);
+		});
+		return results;
+	}
 	return {
 		_slice: _slice,
 		inside: inside,
-		each: each
+		each: each,
+		findAll: findAll,
+		filter: findAll
+	}
+})());
+
+Object.extend($N.prototype, (function(){
+	function random(){
+		return (Math.random()+"").slice(2);
+	}
+	
+	return {
+		random: random
 	}
 })());
 
@@ -757,8 +834,23 @@ Object.extend(iBen.namespace('util'), (function(){
 				return o;
 		}
 	}
+	function identity(o, value){
+		var id = Constant.get("IDENTITY"), obj;
+		if(typeof o!== 'object'){
+			return $A(iBen.cache).filter(function(value){
+				return value[id]&&value[id]===o;
+			})[0];
+		}else{
+			iBen.cache.push(o);
+			obj = {},
+			obj[id] = iBen.isUndefined(value) ? [_GLOBAL_NAME, "_", $N().random()].join("") : value;
+			Object.extend(o, obj);
+			return o[id];
+		}
+	}
 	return {
-		convert: convert
+		convert: convert,
+		identity: identity
 	}
 })());
 
@@ -780,5 +872,5 @@ Object.extend(iBen, (function(){
 
 win.JSON = win.JSON || iBen.JSON;
 
-win.iBen = win._iBen = win.iben = win.$B = iBen;
-})();
+win.iBen = win.$$ = win.iben = win.$B = iBen;
+})(typeof window!== 'undefined' ? window : this);
