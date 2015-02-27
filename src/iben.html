@@ -24,7 +24,7 @@ iBen.each({a:1},function(key, value){
 });
 $A(["234,","cxv"]).each(function(value, idx){
 	iBen.log(value,idx)
-});
+});iBen()
 
 iBen.use('*', function(ben){
 	//constant-常量定义
@@ -37,11 +37,12 @@ iBen.use('*', function(ben){
 	//namespace指定命名空间，有则返回
 	//ben.log(iBen.namespace("modules.constant"));
 	ben.log($S('{\'a\' : "1\r\n 2"}').eval());
+	ben.log($S('{"Array" : ["toLocaleString","join","reverse","sort","push","pop","shift","unshift","splice","concat","slice","lastIndexOf","indexOf","forEach","map","reduce","reduceRight","filter","some","every","find","findIndex","copyWithin","fill","entries","keys"]}').eval());
 	//strip functions
 	iBen.log($S('{\'a\' : "{sdf,,dsf}",a:[function(){if(1==1){\r\n alert(123);\r\n\t}}],c:["234,345[]{}"],f:{e:{},e:{e:[1]}}}').eval());
 	/*
 		所有json字符串格式如下，无/单/双引号，function忽略，包含递归
-		讲字符串转换成json原则：取出key，取出value
+		将字符串转换成json原则：取出key，取出value
 	 */
 	//一对{}是一个对象，里面的数据都属于一个对象
 	var json='[[[[[[[3,{a:3}]],345,34564,4567,568786797]]]],{c:{}}]';
