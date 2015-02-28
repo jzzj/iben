@@ -6,8 +6,9 @@
  * contact: 905951024@qq.com
  */
 (function(win){
-var _arraryProto = Array.prototype,
-	_slice = _arraryProto.slice,
+var _arrayProto = Array.prototype,
+	_slice =  _arrayProto.slice,
+	_concat = _arrayProto.concat,
 	
 	iBen = function(){
 		return iBen.use.apply(this, arguments);
@@ -23,7 +24,7 @@ var _arraryProto = Array.prototype,
 	CLASS_TYPE = ["Boolean","Function","RegExp","Object","Error"].concat(EXTEND_TYPES),
 	TYPES = CLASS_TYPE.concat(["Undefined","Null"]);
 
-//turn it off when you publish your project. it's false in the version of the min-iBen
+//turn debug off when you publish your project. it's false in the version of the min-iBen
 iBen.config = {
 	debug: true,
 	cacheUse : true,
@@ -93,42 +94,92 @@ Object.extend(iBen, {
 		  MobileSafari:   /Apple.*Mobile/.test(ua)
 		}
 	})(),
-	cache: {},
+	cache: {
+		Modules: {},
+		Plugins: {},
+		UI: {}
+	},
 	instanceOf: function(o, type) {
 		return !!(o && o.hasOwnProperty && (o instanceof type));
 	},
+	/**
+	 * iBen contains three parts:
+	 * Modules for core part
+	 * Plugins for plugins part
+	 * UI for ui part
+	 */
 	Modules: {},
-	add: function(module, source){
-		var destination = iBen.Modules;
-		iBen.isString(module) ? (destination = iBen.namespace(['Modules', module].join("."))) : (source = module);
-		Object.extend(destination, source);
-		return iBen;
+	Plugins: {},
+	UI: {},
+	add: function(){
+		return Object.extend(iBen.Modules, this._add.apply(this, _slice.call(arguments, 0).concat('Modules')));
+	},
+	plugin: function(){
+		return Object.extend(iBen.Plugins, this._add.apply(this, _slice.call(arguments, 0).concat('Plugins')));
+		
+	},
+	ui: function(){
+		return Object.extend(iBen.UI, this._add.apply(this, _slice.call(arguments, 0).concat('UI')));
+	},
+	/**
+	 * args: name of the module, part of the module, belong to which Module
+	 */
+	_add: function(modules){
+		var name, init, args = arguments, len = args.length, last = args[len-1];
+		if(len >= 3){
+			name = args[0];
+			modules = iBen.namespace([last, name].join("."));
+			modules[name] = args[1];
+		}
+		iBen.each(modules, function(name, obj){
+			init = obj.initialize;
+			//refresh the cache
+			iBen.cache[last][name] = null;
+			if(!iBen.isUndefined(init)){
+				if(iBen.isFunction(init)){
+					return false;
+				}else{
+					//if obj has initialize, but it's not a function, save it as _initialize property.
+					obj._initialize = obj.initialize;
+				}
+			}
+			obj.initialize = function(ben){
+				ben[name] = obj;
+			};
+		});
+		return modules;
 	},
 	use: function(){
 		var args = _slice.call(arguments, 0),
+			last = args[args.length-1];
+		args = ["Modules","Plugins","UI"].indexOf(last)>=0 ? args : args.concat('Modules');
+		return iBen._use.apply(this, args);
+	},
+	_use: function(){
+		var args = _slice.call(arguments, 0),
+			last = args.pop(),
+			part = iBen[last],
 			callback = iBen.isFunction(args[args.length - 1]) ? args.pop() : null,
 			modules = iBen.isArray(args[0]) ? args[0]: args,
-			i, Ben = this, Modules;
+			i, Ben = this;
 		if(!iBen.instanceOf(Ben, iBen)){
-			return new iBen(modules, callback);
+			return new iBen(modules, callback, last);
 		}
-		if(iBen.config.cacheUse && iBen.instanceOf(iBen.cache[modules], iBen)){
-			Ben = iBen.cache[modules];
+		if(iBen.config.cacheUse && iBen.instanceOf(iBen.cache[last][modules], iBen)){
+			Ben = iBen.cache[last][modules];
 		}else{
-			Modules = iBen.Modules;
 			if(!modules.length || modules[0]==="*"){
 				modules = [];
-				for(i in Modules){
-					if(Modules.hasOwnProperty(i)&&iBen.isFunction(Modules[i]))
+				for(i in part){
+					if(part.hasOwnProperty(i) && i!=='use')
 						modules.push(i);
 				}
 			}
-			iBen.cache[modules] = Ben;
+			iBen.cache[last][modules] = Ben;
 			for(i=0, len=modules.length; i<len; i++){
-				Modules[modules[i]](Ben);
+				part[modules[i]].initialize(Ben);
 			}
 		}
-		
 		iBen.isFunction(callback)&&callback.apply(Ben, [Ben].concat(modules));
 		return (len-1) ? Ben : Ben[modules[0]] || Ben;
 	},
@@ -172,6 +223,19 @@ Object.extend(iBen, {
 	},
 	emptyFunction: function emptyFunction(){}
 });
+
+(function(){
+	function _extend(module){
+		Object.extend(iBen[module], {
+			use: function(){
+				return iBen._use.apply(this, _slice.call(arguments, 0).concat(module));
+			}
+		});
+	}
+	_extend("Modules");
+	_extend("Plugins");
+	_extend("UI");
+})();
 
 iBen.each(TYPES, function(item, idx){
 	iBen["is"+item] = function(o){
@@ -222,22 +286,11 @@ var period = ".",
 	//store of json module vars
 	json = {},
 	//RegExps for format json string
-	reg_hash=/(?:"|')*\S+(?:"|')*:(?:"|')*\S+(?:"|')*/g,
 	reg_array=/^ *\[.*\] *$/,
 	reg_empty_array=/^\[\s*]$/g,
 	//multi-line text is supportive
 	reg_object=/^ *{.*} *$/,
-	reg_empty_object=/^{\s*(} *)+$/g,
-	reg_strip_array=/^(?: *\[ *)*(.*?)(?: *\] *)+$/g,
-	//RE eval string
 	reg_array_quot=/^.*?("|').*?$/,
-	reg_strip_start=/^(?: *{ *)*/g,
-	reg_key=/^ *("|')*(.*?)\1\s*:(?:.*)$/,
-	reg_key_string=/^ *("|')*(.*?)\1\s*:/,
-	reg_type=/^ *(?:"|')+\s*/,
-	reg_value=/^ *("|')*\s*(.*?)\1\s*(?:(}){2,}|(?=}|,))(?=}|,)(?:.*)$/,
-	reg_value_hash=/^ *("|')*(.*?)\1 *$/g,
-	reg_strip_tail=/(^.*?,)|(}+$)/,
 	reg_function=/^ *function *\( *\)/;
 
 Object.extend(json, {
@@ -297,51 +350,41 @@ Object.extend(iBen.prototype, {
 });
 
 iBen.add({
-	base : function(box){
-		Object.extend(box, {
-			inherit: function(subclass, superclass){
-				function F(){}
-				F.prototype = superclass.prototype;
-				subclass.prototype = new F;
-				subclass.prototype.constructor = subclass;
-				subclass.superclass = superclass;
-				return subclass;
-			},
-			object: function(o){
-				function F(){}
-				F.prototype = o;
-				return new F;
-			},
-		});
+	base: {
+		inherit: function(subclass, superclass){
+			function F(){}
+			F.prototype = superclass.prototype;
+			subclass.prototype = new F;
+			subclass.prototype.constructor = subclass;
+			subclass.superclass = superclass;
+			return subclass;
+		},
+		object: function(o){
+			function F(){}
+			F.prototype = o;
+			return new F;
+		},
 	},
-	constant : function(box){
-		box.constant = (function(){
-			var constants = {},
-				ownProp = Object.prototype.hasOwnProperty,
-				prefix = (Math.random()+"_").slice(2);
-			return {
-				isDefined: function(name){
-					return ownProp.call(constants, prefix+name);
-				},
-				add: function(name, value){
-					if(this.isDefined(name))
-						return false;
-					constants[prefix+name] = value;
-					return this;
-				},
-				get: function(name){
-					return constants[prefix+name] || null;
-				}
+	constant : (function(){
+		var constants = {},
+			ownProp = Object.prototype.hasOwnProperty,
+			prefix = (Math.random()+"_").slice(2);
+		return {
+			isDefined: function(name){
+				return ownProp.call(constants, prefix+name);
+			},
+			add: function(name, value){
+				if(this.isDefined(name))
+					return false;
+				constants[prefix+name] = value;
+				return this;
+			},
+			get: function(name){
+				return constants[prefix+name] || null;
 			}
-		})();
-	},
-	observer : function(box){
-		box.observer=function(o){
-			o = o || {};
-			Object.extend(o, Publisher, true, 'function');
-			o.subscribers={any : []};
-			return o;
-		};
+		}
+	})(),
+	observer : (function(box){
 		//keys for compatibility
 		var Publisher={
 			subscribe: function(fn, context, type){
@@ -366,108 +409,121 @@ iBen.add({
 			publish: function(){
 				var args, type = arguments[arguments.length-1];
 				type = iBen.isString(type)? type : 'any';
-				args = _arraryProto.slice.call(arguments, 0);
+				args = _slice.call(arguments, 0);
 				this.subscribers[type]&&iBen.each(this.subscribers[type], function(object){
 					object[0].apply(object[1], args);
 				});
 			}
 		};
-	},
-	json: function(box){
-		box.json = (function(){
-			var result, temp, convert, obj, last, raw;
-			function evalJson(str, result){
-				raw = str;
-				while(str.length&&!$S(str).blank()){
-					//prevent endless loop
-					if(last === str){
-						json.error(raw);
-					}
-					last = str;
-					str=str.replace(reg_strip_array, "$1");
-					obj = reg_object.test(str)? {} : iBen.isArray(result) ? result.pop() : {};
-					str=str.replace(reg_strip_start, "");
-					var key = str.replace(reg_key, "$2"),
-						value;
-					str = str.replace(reg_key_string, "");
-					convert = !reg_type.test(str);
-					// empty {}, return obj
-					if(reg_empty_object.test(str)){
-						str = "";
-						obj = {};
-						obj[key] = {};
-						return obj;
-					//{.+}
-					}else if(reg_object.test(str)){
-						temp = $S(str).gsub(reg_array_quot, 0);
-						str = str.slice(temp.cursor);
-						value = temp.value;
-					//[.*]
-					}else if(/^ *\[/g.test(str)){
-						convert = true;
-						var cursor = $S(str).findArray()+1;
-						value = str.slice(str.indexOf("["), cursor);
-						str = str.slice(cursor);
-					//regular formed
-					}else if(reg_value.test(str)){
-						value = str.replace(reg_value, '$2$3');
-					//a:'b'
-					}else if(reg_value_hash.test(str)){
-						value = str.replace(reg_value_hash, '$2');
-						str = "";
-					//uncaught error
-					}else{
-						json.error(str);
-					}
-					if(convert&&reg_function.test(value)){
-						str = str.slice($S(str).findObject());
-					}
-					str=str.replace(value, "").replace(/("|')\1/,"").replace(reg_strip_tail,"");
-					if(convert){
-						temp = value;
-						value= iBen.util.convert(temp);
-					}
-					if(value===Constant.get("CONTINUE"))
-						continue;
-					if(iBen.isObject(value)){
-						value = arguments.callee(temp, value);
-					}else if(iBen.isArray(value)){
-						value = $S(temp).eval();
-					}
-					value = iBen.isString(value) ? $S(value).recoverLine() : value;
-					if(iBen.isArray(result)){
-						obj[key] = value;
-						result.push(obj);
-					}else if(iBen.isObject(result)){
-						result[key] = value;
-					}
+		return function(o){
+			o = o || {};
+			Object.extend(o, Publisher, true, 'function');
+			o.subscribers={any : []};
+			return o;
+		};
+	})(),
+	json: (function(){
+		var result, temp, convert, obj, last, raw,
+			reg_strip_start=/^(?: *{ *)*/g,
+			reg_key=/^ *("|')*(.*?)\1\s*:(?:.*)$/,
+			reg_key_string=/^ *("|')*(.*?)\1\s*:/,
+			reg_type=/^ *(?:"|')+\s*/,
+			reg_value=/^ *("|')*\s*(.*?)\1\s*(?:(}){2,}|(?=}|,))(?=}|,)(?:.*)$/,
+			reg_value_hash=/^ *("|')*(.*?)\1 *$/g,
+			reg_strip_tail=/(^.*?,)|(}+$)/,
+			reg_empty_object=/^{\s*(} *)+$/g,
+			reg_strip_array=/^(?: *\[ *)*(.*?)(?: *\] *)+$/g,
+			reg_hash=/(?:"|')*\S+(?:"|')*:(?:"|')*\S+(?:"|')*/g;
+		function evalJson(str, result){
+			raw = str;
+			while(str.length&&!$S(str).blank()){
+				//prevent endless loop
+				if(last === str){
+					json.error(raw);
 				}
-				return result;
-			}
-			//reg_hash: a:'b'
-			function validate(str){
-				if(reg_hash.test(str) || reg_object.test(str)){
-					return {};
+				last = str;
+				str=str.replace(reg_strip_array, "$1");
+				obj = reg_object.test(str)? {} : iBen.isArray(result) ? result.pop() : {};
+				str=str.replace(reg_strip_start, "");
+				var key = str.replace(reg_key, "$2"),
+					value;
+				str = str.replace(reg_key_string, "");
+				convert = !reg_type.test(str);
+				// empty {}, return obj
+				if(reg_empty_object.test(str)){
+					str = "";
+					obj = {};
+					obj[key] = {};
+					return obj;
+				//{.+}
+				}else if(reg_object.test(str)){
+					temp = $S(str).gsub(reg_array_quot, 0);
+					str = str.slice(temp.cursor);
+					value = temp.value;
+				//[.*]
+				}else if(/^ *\[/g.test(str)){
+					convert = true;
+					var cursor = $S(str).findArray()+1;
+					value = str.slice(str.indexOf("["), cursor);
+					str = str.slice(cursor);
+				//regular formed
+				}else if(reg_value.test(str)){
+					value = str.replace(reg_value, '$2$3');
+				//a:'b'
+				}else if(reg_value_hash.test(str)){
+					value = str.replace(reg_value_hash, '$2');
+					str = "";
+				//uncaught error
+				}else{
+					json.error(str);
 				}
-				json.error(str);
-			}
-			
-			return {
-				toJson: function(o){
-					o = $S(o).coverLine();
-					if(reg_array.test(o)){
-						return $S(o).eval();
-					}
-					result = validate(o);
-					return evalJson(o, result);
-				},
-				toString: function(o){
-					
+				if(convert&&reg_function.test(value)){
+					str = str.slice($S(str).findObject());
+				}
+				str=str.replace(value, "").replace(/("|')\1/,"").replace(reg_strip_tail,"");
+				if(convert){
+					temp = value;
+					value= iBen.util.convert(temp);
+				}
+				if(value===Constant.get("CONTINUE"))
+					continue;
+				if(iBen.isObject(value)){
+					value = arguments.callee(temp, value);
+				}else if(iBen.isArray(value)){
+					value = $S(temp).eval();
+				}
+				value = iBen.isString(value) ? $S(value).recoverLine() : value;
+				if(iBen.isArray(result)){
+					obj[key] = value;
+					result.push(obj);
+				}else if(iBen.isObject(result)){
+					result[key] = value;
 				}
 			}
-		})();
+			return result;
+		}
+		//reg_hash: a:'b'
+		function validate(str){
+			if(reg_hash.test(str) || reg_object.test(str)){
+				return {};
+			}
+			json.error(str);
+		}
 		
-	}
+		return {
+			toJson: function(o){
+				o = $S(o).coverLine();
+				if(reg_array.test(o)){
+					return $S(o).eval();
+				}
+				result = validate(o);
+				return evalJson(o, result);
+			},
+			toString: function(o){
+				return "not finished yet";
+			}
+		}
+	})()
 });
 var Constant = iBen.use("constant");
 Constant.add("CONTINUE", "__IBEN_CONTINUE_FLAG__")

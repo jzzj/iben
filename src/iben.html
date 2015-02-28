@@ -24,7 +24,37 @@ iBen.each({a:1},function(key, value){
 });
 $A(["234,","cxv"]).each(function(value, idx){
 	iBen.log(value,idx)
-});iBen()
+});
+iBen.add('test', {
+	'init': function(){
+		//alert(2);
+		this.todo();
+		iBen.log(123,this)
+	},
+	'todo': function(){
+		//alert(1)
+	}
+}).use('test').init();
+
+iBen.plugin('pl',function(){
+	alert(13)
+}).use('pl')();
+iBen.ui('pl',function(){
+	alert(12)
+}).use('pl')();
+iBen.ui('pl',function(){
+	alert(123)
+}).use('pl')();
+iBen.add('pl',function(){
+	alert(1234)
+}).use('pl')();
+iBen.add({
+	'pl':function(ben){
+		alert(1)
+	}
+}).use('pl',function(ben){
+	alert(ben)
+})();
 
 iBen.use('*', function(ben){
 	//constant-常量定义
