@@ -152,7 +152,7 @@ Object.extend(iBen, {
 	use: function(){
 		var args = _slice.call(arguments, 0),
 			last = args[args.length-1];
-		args = ["Modules","Plugins","UI"].indexOf(last)>=0 ? args : args.concat('Modules');
+		args = iBen.inArray(["Modules","Plugins","UI"], last)>=0 ? args : args.concat('Modules');
 		return iBen._use.apply(this, args);
 	},
 	_use: function(){
@@ -221,6 +221,16 @@ Object.extend(iBen, {
 		}
 		return obj;
 	},
+	//borrow from jQuery
+	inArray: function(array, elem){
+		for (var i=0, len=array.length ; i < len; i++) {
+			// Skip accessing in sparse arrays
+			if ( i in array && array[ i ] === elem ) {
+				return i;
+			}
+		}
+		return -1;
+	},
 	emptyFunction: function emptyFunction(){}
 });
 
@@ -278,7 +288,7 @@ Object.extend(Array, {
 	});
 	Object.extend(Object, {
 		keys: iBen.isFunction(Object.keys) ? Object.keys : keys,
-		values: iBen.isFunction(Object.values) ? Object.values : values,
+		values: iBen.isFunction(Object.values) ? Object.values : values
 	});
 })();
 
@@ -363,7 +373,7 @@ iBen.add({
 			function F(){}
 			F.prototype = o;
 			return new F;
-		},
+		}
 	},
 	constant : (function(){
 		var constants = {},
@@ -548,7 +558,7 @@ iBen.each(EXTEND_TYPES, function(item, idx){
 		if(item === 'Array'){
 			this._ = o || [];
 		}else{
-			this._ = o?new win[item](o):new win[item];
+			this._ = o?new win[item](o):new win[item]();
 		}
 		return this;
 	};
@@ -580,22 +590,23 @@ iBen.each(extend_protos, function(proto){
 		});
 	});
 });
-var brace = ['{', '}'],
-	bracket = ['[', ']'];
+
 
 Object.extend($S, {
 	specialChar: {
 		'\n': '_n_',
-		'\r': '_r_',
+		'\r': '_r_'
 	},
 	reverseChar: {
 		'_n_': '\n',
-		'_r_': '\r',
+		'_r_': '\r'
 	}
 });
 
 //iBen.String
 Object.extend($S.prototype, (function(){
+	var brace = ['{', '}'],
+		bracket = ['[', ']'];
 	function find(cha, callback){
 		var reg_char=new RegExp(cha, 'g'),
 			count = 0,
@@ -625,7 +636,7 @@ Object.extend($S.prototype, (function(){
 		return /^\s*$/.test(this._);
 	}
 	function toArray(){
-		return this.split('');
+		return this._.split('');
 	}
 	function couple(marks, cha){
 		return this.findChar(marks, function(count ,c, idx, s){
@@ -649,13 +660,13 @@ Object.extend($S.prototype, (function(){
 		});
 	}
 	function findChar(marks, increase){
-		var a=0, b=0, c=0, i=0, str=this._, flag=false, len=str.length;
+		var a=0, b=0, c=0, i=0, str=this.toArray(), flag=false, len=str.length;
 		for(; i<len; i++){
 			c = increase(c, str[i], i, str) || c;
 			if(c%2 === 0){
-				if(str[i]===marks[0]){
+				if(str[i]==marks[0]){
 					a++;
-				}else if(str[i]===marks[1]){
+				}else if(str[i]==marks[1]){
 					b++;
 				}
 			}
@@ -665,7 +676,7 @@ Object.extend($S.prototype, (function(){
 			}
 		}
 		if(!flag){
-			throw new Error(marks+" are not couple in "+str+"!");
+			throw new Error(marks+" are not couple in "+this._+"!");
 		}
 		return i;
 	}
@@ -678,14 +689,14 @@ Object.extend($S.prototype, (function(){
 			str = this.substring.apply(this, args).strip()._,
 			count, start, end, temp;
 		cha = reg.test(str) ? str.replace(reg,'$1') : "";
-		if(str[0] === brace[0]){
+		if(/^{/.test(str)){
 			temp = this.substr(idx, this.substr(idx).couple(brace, cha)+1)._;
 			return {
 				result: Constant.get("JSON"),
 				value: temp,
 				cursor: idx+temp.length
 			}
-		}else if(str[0] === bracket[0]){
+		}else if(/^\[/.test(str)){
 			temp = this.substr(idx, this.substr(idx).findArray(bracket, cha)+1)._;
 			return {
 				result: Constant.get("ARRAY"),
@@ -841,12 +852,15 @@ Object.extend($A.prototype, (function(){
 		});
 		return results;
 	}
+	
 	return {
 		_slice: _slice,
 		inside: inside,
 		each: each,
 		findAll: findAll,
-		filter: findAll
+		filter: findAll,
+		inArray: iBen.inArray,
+		indexOf: iBen.inArray
 	}
 })());
 

@@ -35,7 +35,11 @@ iBen.add('test', {
 		//alert(1)
 	}
 }).use('test').init();
-
+/*
+自定义模块：
+plugin：定义插件，所有插件在iBen.Plugins下
+UI：定义UI，所有插件在iBen.UI下
+add：定义Module，所有插件在iBen.Modules下
 iBen.plugin('pl',function(){
 	alert(13)
 }).use('pl')();
@@ -55,7 +59,7 @@ iBen.add({
 }).use('pl',function(ben){
 	alert(ben)
 })();
-
+*/
 iBen.use('*', function(ben){
 	//constant-常量定义
 	ben.constant.add("zhangsan",11);
