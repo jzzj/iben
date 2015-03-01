@@ -558,7 +558,7 @@ iBen.each(EXTEND_TYPES, function(item, idx){
 		if(item === 'Array'){
 			this._ = o || [];
 		}else{
-			this._ = o?new win[item](o):new win[item]();
+			this._ = iBen.isUndefined(o) ? new win[item]():new win[item](o);
 		}
 		return this;
 	};
