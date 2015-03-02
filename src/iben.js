@@ -458,6 +458,7 @@ iBen.add({
 				//prevent endless loop
 				if(last === str){
 					json.error(raw);
+					return raw;
 				}
 				last = str;
 				str=str.replace(reg_strip_array, "$1");
@@ -983,7 +984,7 @@ iBen.extend(iBen, (function(){
 
 win.JSON = win.JSON || iBen.JSON;
 
-//for CommonJS
+//for CommonJS. not exactly did it, just save as an API here.
 if (typeof exports==='object') {
 	exports.iBen = iBen;
 }
