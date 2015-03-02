@@ -39,15 +39,16 @@ iBen.config = {
 	function each(array, fn){
 		for(var i=0, len=array.length; i<len; i++)
 			fn(i, array[i]);
+		return array;
 	}
 	//borrow from jQuery
-	each(CLASS_TYPE,function(i, item){
+	each(CLASS_TYPE, function(i, item){
 		class2type["[object "+item+"]"] = item.toLowerCase();
 	});
 	function extend(destination, source, hasOwnProperty, type){
 		if(hasOwnProperty&&type){
 			for(var key in source)
-				if(_hasOwn.call(source, key)&&Object.type(source[key])===type)
+				if(_hasOwn.call(source, key)&&iBen.type(source[key])===type)
 					destination[key] = source[key];
 			return destination;
 		}
@@ -61,6 +62,11 @@ iBen.config = {
 			destination[key] = source[key];
 		return destination;
 	}
+	function successive(array, source, hasOwnProperty, type){
+		return each(array, function(idx, obj){
+			extend(obj, source, hasOwnProperty, type);
+		});
+	}
 	//borrow from jQuery
 	function type(object){
 		return isUndefined(object)? 'undefined': object==null? 'null': class2type[_toString.call(object)] || 'object';
@@ -72,16 +78,16 @@ iBen.config = {
 		return extend({}, object);
 	}
 	
-	extend(Object,{
+	successive([iBen, Object],{
 		extend: extend,
 		type: type,
-		isUndefined: isUndefined,
+		successive: successive,
 		clone: clone
 	});
 })();
 
 //basic of iBen
-Object.extend(iBen, {
+iBen.extend(iBen, {
 	Version: "1.1.0",
 	Browser: (function(){
 		var ua = navigator.userAgent;
@@ -112,14 +118,14 @@ Object.extend(iBen, {
 	Plugins: {},
 	UI: {},
 	add: function(){
-		return Object.extend(iBen.Modules, this._add.apply(this, _slice.call(arguments, 0).concat('Modules')));
+		return iBen.extend(iBen.Modules, this._add.apply(this, _slice.call(arguments, 0).concat('Modules')));
 	},
 	plugin: function(){
-		return Object.extend(iBen.Plugins, this._add.apply(this, _slice.call(arguments, 0).concat('Plugins')));
+		return iBen.extend(iBen.Plugins, this._add.apply(this, _slice.call(arguments, 0).concat('Plugins')));
 		
 	},
 	ui: function(){
-		return Object.extend(iBen.UI, this._add.apply(this, _slice.call(arguments, 0).concat('UI')));
+		return iBen.extend(iBen.UI, this._add.apply(this, _slice.call(arguments, 0).concat('UI')));
 	},
 	/**
 	 * args: name of the module, part of the module, belong to which Module
@@ -188,7 +194,7 @@ Object.extend(iBen, {
 		var name,
 			i = 0,
 			length = obj.length,
-			isObj = length === undefined || Object.type(obj)==='function';
+			isObj = length === undefined || iBen.type(obj)==='function';
 		if(args){
 			if(isObj){
 				for(name in obj){
@@ -236,7 +242,7 @@ Object.extend(iBen, {
 
 (function(){
 	function _extend(module){
-		Object.extend(iBen[module], {
+		iBen.extend(iBen[module], {
 			use: function(){
 				return iBen._use.apply(this, _slice.call(arguments, 0).concat(module));
 			}
@@ -249,12 +255,12 @@ Object.extend(iBen, {
 
 iBen.each(TYPES, function(item, idx){
 	iBen["is"+item] = function(o){
-		return Object.type(o)===item.toLowerCase();
+		return iBen.type(o)===item.toLowerCase();
 	};
 });
-iBen.isNumber = function(o){ return Object.type(o)==='number'&&!isNaN(o)};
+iBen.isNumber = function(o){ return iBen.type(o)==='number'&&!isNaN(o)};
 
-Object.extend(Array, {
+iBen.extend(Array, {
 	isArray:  Array.isArray || iBen.isArray
 });
 
@@ -281,12 +287,12 @@ Object.extend(Array, {
 	function values(object){
 		return pluck(object, 'value');
 	}
-	Object.extend(iBen, {
+	iBen.extend(iBen, {
 		pluck: pluck,
 		keys: keys,
 		values: values
 	});
-	Object.extend(Object, {
+	iBen.extend(Object, {
 		keys: iBen.isFunction(Object.keys) ? Object.keys : keys,
 		values: iBen.isFunction(Object.values) ? Object.values : values
 	});
@@ -303,15 +309,17 @@ var period = ".",
 	reg_array_quot=/^.*?("|').*?$/,
 	reg_function=/^ *function *\( *\)/;
 
-Object.extend(json, {
+iBen.extend(json, {
 	error: function(str){
-		throw new SyntaxError('Badly formed JSON string: ' + str);
+		if(iBen.config.throwFail){
+			throw new SyntaxError('Badly formed JSON string: ' + str);
+		}
 	}
 });
 	
-Object.extend(iBen, {
+iBen.extend(iBen, {
 	configure: function(config){
-		Object.extend(iBen.config, config, true);
+		iBen.extend(iBen.config, config, true);
 		return iBen;
 	},
 	//borrow from YUI
@@ -352,7 +360,7 @@ Object.extend(iBen, {
 });
 
 //base modules
-Object.extend(iBen.prototype, {
+iBen.extend(iBen.prototype, {
 	instanceOf: iBen.instanceOf,
 	log: iBen.log,
 	write: iBen.write,
@@ -400,7 +408,7 @@ iBen.add({
 			subscribe: function(fn, context, type){
 				type = type || 'any';
 				fn = iBen.isFunction(fn) ? fn: context[fn];
-				if (Object.isUndefined(this.subscribers[type]))
+				if (iBen.isUndefined(this.subscribers[type]))
 					this.subscribers[type] = [];
 				
 				this.subscribers[type].push([fn, context]);
@@ -427,7 +435,7 @@ iBen.add({
 		};
 		return function(o){
 			o = o || {};
-			Object.extend(o, Publisher, true, 'function');
+			iBen.extend(o, Publisher, true, 'function');
 			o.subscribers={any : []};
 			return o;
 		};
@@ -563,7 +571,7 @@ iBen.each(EXTEND_TYPES, function(item, idx){
 		return this;
 	};
 	//rewrite toString and add size, raw for raw object
-	Object.extend(iBen[item].prototype, {
+	iBen.extend(iBen[item].prototype, {
 		toString : function(){
 			return win[item].prototype.toString.apply(this.raw(), arguments);
 		},
@@ -576,23 +584,29 @@ iBen.each(EXTEND_TYPES, function(item, idx){
 	});
 });
 
-//inherit the prototype of native Object
+/**
+ * inherit the prototype of native Object
+ * It will convert to iBen[type] when the type that function returned equals the type that in the EXTEND_TYPES
+ */
 iBen.each(extend_protos, function(proto){
 	iBen.each(proto, function(type, array){
-		var _prototype = win[type].prototype;
+		var TYPE = win[type],
+			_prototype = TYPE.prototype,
+			result;
 		iBen.each(array, function(key){
 			var CLASS = iBen[type],
 				fn = _prototype[key];
 			if(!iBen.isFunction(fn)) return;
 			CLASS.prototype[key] = function(){
-				return CLASS(fn.apply(this.raw(), arguments));
+				result = fn.apply(this.raw(), arguments);
+				return (iBen.type(result)===type.toLowerCase()) ? CLASS(result) : result;
 			}
 		});
 	});
 });
 
 
-Object.extend($S, {
+iBen.extend($S, {
 	specialChar: {
 		'\n': '_n_',
 		'\r': '_r_'
@@ -604,7 +618,7 @@ Object.extend($S, {
 });
 
 //iBen.String
-Object.extend($S.prototype, (function(){
+iBen.extend($S.prototype, (function(){
 	var brace = ['{', '}'],
 		bracket = ['[', ']'];
 	function find(cha, callback){
@@ -818,7 +832,7 @@ Object.extend($S.prototype, (function(){
 })());
 
 //iBen.Array
-Object.extend($A.prototype, (function(){
+iBen.extend($A.prototype, (function(){
 	function _slice(str){
 		if(reg_array.test(str)){
 			this.inside().push([]);
@@ -865,7 +879,7 @@ Object.extend($A.prototype, (function(){
 })());
 
 //iBen.Number
-Object.extend($N.prototype, (function(){
+iBen.successive([$N, $N.prototype], (function(){
 	function random(){
 		return (Math.random()+"").slice(2);
 	}
@@ -876,7 +890,12 @@ Object.extend($N.prototype, (function(){
 })());
 
 //iBen.Date
-Object.extend($D.prototype, (function(){
+iBen.successive([$D, $D.prototype], {
+	now: function(){
+		return $D().getTime();
+	}
+});
+iBen.extend($D.prototype, (function(){
 	//add functions here
 	
 	return {
@@ -888,7 +907,7 @@ Object.extend($D.prototype, (function(){
 	function stringify(){
 		
 	}
-	Object.extend(iBen, {
+	iBen.extend(iBen, {
 		
 		JSON: {
 			parse: function(arg){
@@ -900,7 +919,7 @@ Object.extend($D.prototype, (function(){
 	});
 })();
 
-Object.extend(iBen.namespace('util'), (function(){
+iBen.extend(iBen.namespace('util'), (function(){
 	function convert(o){
 		if($S(o).blank())return o;
 		var convert_value = Number(o);
@@ -926,17 +945,17 @@ Object.extend(iBen.namespace('util'), (function(){
 				return o;
 		}
 	}
+	
 	function identity(o, value){
 		var id = Constant.get("IDENTITY"), obj;
+		//for array or object
 		if(typeof o!== 'object'){
-			return $A(iBen.cache).filter(function(value){
-				return value[id]&&value[id]===o;
-			})[0];
+			return iBen.cache[o];
 		}else{
-			iBen.cache.push(o);
 			obj = {},
 			obj[id] = iBen.isUndefined(value) ? [_GLOBAL_NAME, "_", $N().random()].join("") : value;
-			Object.extend(o, obj);
+			iBen.extend(o, obj);
+			iBen.cache[obj[id]] = o;
 			return o[id];
 		}
 	}
@@ -946,7 +965,7 @@ Object.extend(iBen.namespace('util'), (function(){
 	}
 })());
 
-Object.extend(iBen, (function(){
+iBen.extend(iBen, (function(){
 	//not finished the function yet
 	function stringify(){
 		return "";
@@ -965,7 +984,7 @@ Object.extend(iBen, (function(){
 win.JSON = win.JSON || iBen.JSON;
 
 //for CommonJS
-if (typeof exports == 'object') {
+if (typeof exports==='object') {
 	exports.iBen = iBen;
 }
 
