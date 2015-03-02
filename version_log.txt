@@ -1,10 +1,9 @@
-ÿ�εİ汾���¼�¼�����ڴ�Ŀ¼txt�г��֣�
+每次的版本更新记录都会在此目录txt中呈现：
 
-�汾��iben-version-1.1.0
-ʱ�䣺2015��2��16��09:52:36
-�޸ģ��޸�PublisherΪiBen��observerģ�飬����jsonģ�飬iBen�����ӻ������͵�α�����޸�use��
+版本：iben-version-1.1.0
+时间：2015年2月16日09:52:36
+修改：修改Publisher为iBen的observer模块，添加json模块，iBen中添加基本类型的伪对象，修改use。
 
-δʵ�֣�
-����undo/redo���ܡ�
-jsonģ���toString����
-
+未实现：
+增加undo/redo功能。
+json模块的stringify方法。
