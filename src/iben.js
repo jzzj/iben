@@ -128,7 +128,7 @@ iBen.extend(iBen, {
 		return iBen.extend(iBen.UI, this._add.apply(this, _slice.call(arguments, 0).concat('UI')));
 	},
 	/**
-	 * args: name of the module, part of the module, belong to which Module
+	 * args: name of the module, part of the module, belongs to which Module
 	 */
 	_add: function(modules){
 		var name, init, args = arguments, len = args.length, last = args[len-1];
@@ -158,7 +158,7 @@ iBen.extend(iBen, {
 	use: function(){
 		var args = _slice.call(arguments, 0),
 			last = args[args.length-1];
-		args = iBen.inArray(["Modules","Plugins","UI"], last)>=0 ? args : args.concat('Modules');
+		args = iBen.inArray(last, ["Modules","Plugins","UI"])>=0 ? args : args.concat('Modules');
 		return iBen._use.apply(this, args);
 	},
 	_use: function(){
@@ -228,7 +228,7 @@ iBen.extend(iBen, {
 		return obj;
 	},
 	//borrow from jQuery
-	inArray: function(array, elem){
+	inArray: function(elem, array){
 		for (var i=0, len=array.length ; i < len; i++) {
 			// Skip accessing in sparse arrays
 			if ( i in array && array[ i ] === elem ) {
@@ -240,18 +240,13 @@ iBen.extend(iBen, {
 	emptyFunction: function emptyFunction(){}
 });
 
-(function(){
-	function _extend(module){
-		iBen.extend(iBen[module], {
-			use: function(){
-				return iBen._use.apply(this, _slice.call(arguments, 0).concat(module));
-			}
-		});
-	}
-	_extend("Modules");
-	_extend("Plugins");
-	_extend("UI");
-})();
+iBen.each(["Modules", "Plugins", "UI"], function(key){
+	iBen.extend(iBen[key], {
+		use: function(){
+			return iBen._use.apply(this, _slice.call(arguments, 0).concat(key));
+		}
+	});
+});
 
 iBen.each(TYPES, function(item, idx){
 	iBen["is"+item] = function(o){
@@ -403,7 +398,7 @@ iBen.add({
 		}
 	})(),
 	observer : (function(box){
-		//keys for compatibility
+		//keys for better compatibility
 		var Publisher={
 			subscribe: function(fn, context, type){
 				type = type || 'any';
@@ -524,6 +519,8 @@ iBen.add({
 		//reg_hash: a:'b'
 		function validate(str){
 			if(reg_hash.test(str) || reg_object.test(str)){
+				//clear the last one to prevent the same json string occurs an error.
+				last = undefined;
 				return {};
 			}
 			json.error(str);
@@ -615,6 +612,14 @@ iBen.extend($S, {
 	reverseChar: {
 		'_n_': '\n',
 		'_r_': '\r'
+	},
+	htmlChar: {
+		"&": "&amp;",
+		"<": "&lt;",
+		">": "&gt;",
+		'"': '&quot;',
+		"'": '&#39;',
+		"/": '&#x2F;'
 	}
 });
 
@@ -808,6 +813,13 @@ iBen.extend($S.prototype, (function(){
 		else
 			return t;
 	}
+	
+	function escapeHtml(){
+        return String(this._).replace(/[&<>"'\/]/g, function (s) {
+            return $S.htmlChar[s];
+        });
+    }
+	
 	function br(){
 		return /[\r\n]$/.test(this._)?this._:this._+"\r\n";
 	}
@@ -868,6 +880,17 @@ iBen.extend($A.prototype, (function(){
 		return results;
 	}
 	
+	//borrow from zepto
+	function unique(){
+		return this.filter(function(item, idx){
+			return this.indexOf(item) === idx;
+		}, this);
+	}
+	
+	function indexOf(item){
+		return iBen.inArray(item, this.raw());
+	}
+	
 	return {
 		_slice: _slice,
 		inside: inside,
@@ -875,7 +898,8 @@ iBen.extend($A.prototype, (function(){
 		findAll: findAll,
 		filter: findAll,
 		inArray: iBen.inArray,
-		indexOf: iBen.inArray
+		indexOf: indexOf,
+		unique: unique
 	}
 })());
 
@@ -904,22 +928,6 @@ iBen.extend($D.prototype, (function(){
 	}
 })());
 
-(function(){
-	function stringify(){
-		
-	}
-	iBen.extend(iBen, {
-		
-		JSON: {
-			parse: function(arg){
-				return $S(arg).eval();
-			},
-			stringify: stringify,
-			toString: stringify
-		}
-	});
-})();
-
 iBen.extend(iBen.namespace('util'), (function(){
 	function convert(o){
 		if($S(o).blank())return o;
@@ -947,6 +955,13 @@ iBen.extend(iBen.namespace('util'), (function(){
 		}
 	}
 	
+	function bind(context, fn) {
+		var args = _slice.call(arguments, 2);
+		return function() {
+			return fn.apply(context, args.concat(_slice.call(arguments, 0)));
+		}
+	}
+	
 	function identity(o, value){
 		var id = Constant.get("IDENTITY"), obj;
 		//for array or object
@@ -961,6 +976,7 @@ iBen.extend(iBen.namespace('util'), (function(){
 		}
 	}
 	return {
+		bind: bind,
 		convert: convert,
 		identity: identity
 	}
@@ -976,8 +992,7 @@ iBen.extend(iBen, (function(){
 			parse: function(arg){
 				return $S(arg).eval();
 			},
-			stringify: stringify,
-			toString: stringify
+			stringify: stringify
 		}
 	}
 })());
