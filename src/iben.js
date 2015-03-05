@@ -20,16 +20,19 @@ var _arrayProto = Array.prototype,
 	_objectProto = Object.prototype,
 	_toString = _objectProto.toString,
 	_GLOBAL_NAME = "iBen",
+	VERSION = "1.1.0",
 	EXTEND_TYPES = ["String","Number","Array","Date"],
 	CLASS_TYPE = ["Boolean","Function","RegExp","Object","Error"].concat(EXTEND_TYPES),
 	TYPES = CLASS_TYPE.concat(["Undefined","Null"]);
 
-//turn debug off when you publish your project. it's false in the version of the min-iBen
-iBen.config = {
+iBen.fn = iBen.prototype;
+//You should turn debug off when you publish your project. it's false in the version of the min-iBen
+iBen.fn.config = iBen.config = {
 	debug: true,
 	cacheUse : true,
 	throwFail: true
 };
+
 
 //Object moudle
 (function(){
@@ -88,7 +91,6 @@ iBen.config = {
 
 //basic of iBen
 iBen.extend(iBen, {
-	Version: "1.1.0",
 	Browser: (function(){
 		var ua = navigator.userAgent;
 		var isOpera = _toString.call(window.opera) == '[object Opera]';
@@ -311,11 +313,14 @@ iBen.extend(json, {
 		}
 	}
 });
-	
-iBen.extend(iBen, {
+
+//base modules
+iBen.successive([iBen, iBen.fn], {
+	Version: VERSION,
+	//configure will clone this.config to the empty object to make sure that instance of iBen will always get his own config.
 	configure: function(config){
-		iBen.extend(iBen.config, config, true);
-		return iBen;
+		this.config = iBen.extend(iBen.extend({}, this.config, true), config, true);
+		return this;
 	},
 	//borrow from YUI
 	namespace: function() {
@@ -335,31 +340,23 @@ iBen.extend(iBen, {
         return o;
     },
 	log: function(){
-		iBen.config.debug&&console&&_apply.call(console.log, console, arguments);
+		this.config.debug&&console&&_apply.call(console.log, console, arguments);
 	},
 	write: function(str){
-		iBen.config.debug&&document.body.appendChild(document.createTextNode(str))&&document.body.appendChild(document.createElement('br'));
+		this.config.debug&&document.body.appendChild(document.createTextNode(str))&&document.body.appendChild(document.createElement('br'));
 	},
 	time: function(fn, name){
-		name = name || "IBEN_TIMER_"+iBen.Version;
+		name = name || "IBEN_TIMER_"+this.Version;
 		if(!iBen.isObject(console) || !iBen.isFunction(console.time)){
 			var t=new Date().getTime();
 			fn();
-			iBen.log([name, ":", new Date().getTime()-t, "ms"].join(""));
+			this.log([name, ":", new Date().getTime()-t, "ms"].join(""));
 			return;
 		}
 		console.time(name);
 		fn();
 		console.timeEnd(name);
 	}
-});
-
-//base modules
-iBen.extend(iBen.prototype, {
-	instanceOf: iBen.instanceOf,
-	log: iBen.log,
-	write: iBen.write,
-	time: iBen.time
 });
 
 iBen.add({
@@ -411,9 +408,7 @@ iBen.add({
 			unsubscribe: function(fn, type){
 				type = type || 'any';
 				var that = this;
-				this.subscribers[type] = this.subscribers[type].filter(function(item){
-					return item[0] != fn;
-				});
+				this.subscribers[type].splice($A(this.subscribers[type]).indexOf(fn), 1);
 			},
 			shutdown: function(type){
 				type = type || 'any';
@@ -449,7 +444,7 @@ iBen.add({
 			reg_hash=/(?:"|')*\S+(?:"|')*:(?:"|')*\S+(?:"|')*/g;
 		function evalJson(str, result){
 			raw = str;
-			while(str.length&&!$S(str).blank()){
+			while(!$S(str).blank()){
 				//prevent endless loop
 				if(last === str){
 					json.error(raw);
@@ -897,7 +892,6 @@ iBen.extend($A.prototype, (function(){
 		each: each,
 		findAll: findAll,
 		filter: findAll,
-		inArray: iBen.inArray,
 		indexOf: indexOf,
 		unique: unique
 	}
