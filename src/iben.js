@@ -169,7 +169,7 @@ iBen.extend(iBen, {
 			part = iBen[last],
 			callback = iBen.isFunction(args[args.length - 1]) ? args.pop() : null,
 			modules = iBen.isArray(args[0]) ? args[0]: args,
-			i, Ben = this;
+			i, len, Ben = this;
 		if(!iBen.instanceOf(Ben, iBen)){
 			return new iBen(modules, callback, last);
 		}
