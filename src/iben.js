@@ -314,6 +314,8 @@ iBen.extend(json, {
 	}
 });
 
+
+
 //base modules
 iBen.successive([iBen, iBen.fn], {
 	Version: VERSION,
@@ -978,19 +980,70 @@ iBen.extend(iBen.namespace('util'), (function(){
 
 iBen.extend(iBen, (function(){
 	//not finished the function yet
-	function stringify(){
-		return "";
+	function stringify(json){
+	    var results=[], quot="\"";
+	    iBen.each(json, function(key,value){
+			 if(!iBen.isUndefined(value)){
+				if(iBen.isArray(value)){
+					value = iBen.JSON.fromArray(value);
+					value = multipleArray(value);
+					results.push( quot+key+quot+" : ["+value.join(", ")+"]");
+				}else if(iBen.isObject(value)&&value!=null){
+					value = iBen.JSON.stringify(value);
+					results.push( quot+key+quot+" : "+value);
+				}else if(value==null){
+					results.push( quot+key+quot+" : "+null);
+				}else if(typeof value=="string"){
+				    results.push( quot+key+quot+" : "+quot+value+quot);
+				}else{
+				    results.push( quot+key+quot+" : "+value);
+				}
+			}	 
+        });
+		return '{'+results.join(", ")+'}';
 	}
+	
+	function fromArray(array){
+
+		if(iBen.isArray(array)){
+			for(var i in array){
+				if(iBen.isArray(array[i])){
+					array[i] = arguments.callee(array[i]);
+					array[i] = multipleArray(array[i]);
+				}else if(iBen.isObject(array[i])){
+					array[i] = iBen.JSON.stringify(array[i]);
+				}
+			}
+		}
+		return array;
+	}
+	
 	return {
 		JSON: {
 			parse: function(arg){
 				return $S(arg).eval();
 			},
-			stringify: stringify
+			stringify: stringify,
+			fromArray: fromArray
 		}
 	}
 })());
 
+function multipleArray(array){
+	if(iBen.isArray(array)){
+		for(var i in array){
+			if(iBen.isArray(array[i])){
+				array[i] = "["+array[i].join(",")+"]";
+			}else if(typeof array[i]=="string"){
+			    array[i] ="\""+array[i]+"\"";
+		    }else if(iBen.isFunction(array[i])){
+			    //array[i]="";
+				array.splice(i,1);
+			}
+		}
+		return array;
+    }
+}
 win.JSON = win.JSON || iBen.JSON;
 
 //for CommonJS. not exactly did it, just save as an API here.
