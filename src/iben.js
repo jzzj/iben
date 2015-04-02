@@ -994,6 +994,7 @@ iBen.extend(iBen, (function(){
 				}else if(value==null){
 					results.push( quot+key+quot+" : "+null);
 				}else if(typeof value=="string"){
+				    value=value.replace(/\"/g,"\\\"");
 				    results.push( quot+key+quot+" : "+quot+value+quot);
 				}else{
 				    results.push( quot+key+quot+" : "+value);
